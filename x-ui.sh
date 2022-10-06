@@ -94,7 +94,7 @@ before_show_menu() {
 }
 
 install() {
-    bash <(curl -Ls https://raw.githubusercontent.com/vaxilu/x-ui/master/install.sh)
+    bash <(curl -Ls https://raw.githubusercontent.com/adelrz/Server-Proxy/master/install.sh)
     if [[ $? == 0 ]]; then
         if [[ $# == 0 ]]; then
             start
@@ -113,7 +113,7 @@ update() {
         fi
         return 0
     fi
-    bash <(curl -Ls https://raw.githubusercontent.com/vaxilu/x-ui/master/install.sh)
+    bash <(curl -Ls https://raw.githubusercontent.com/adelrz/Server-Proxy/master/install.sh)
     if [[ $? == 0 ]]; then
         LOGI "The update is complete, the panel has been automatically restarted "
         exit 0
@@ -183,7 +183,7 @@ check_config() {
 set_port() {
     echo && echo -n -e "Enter the port number[1-65535]: " && read port
     if [[ -z "${port}" ]]; then
-        LOGD "已取消"
+        LOGD "Cancelled"
         before_show_menu
     else
         /usr/local/x-ui/x-ui setting -port ${port}
@@ -302,7 +302,7 @@ install_bbr() {
 }
 
 update_shell() {
-    wget -O /usr/bin/x-ui -N --no-check-certificate https://github.com/vaxilu/x-ui/raw/master/x-ui.sh
+    wget -O /usr/bin/x-ui -N --no-check-certificate https://github.com/adelrz/Server-Proxy/raw/master/x-ui.sh
     if [[ $? != 0 ]]; then
         echo ""
         LOGE "The download script failed, please check whether the machine can be connected Github"
