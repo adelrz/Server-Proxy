@@ -1,4 +1,4 @@
-# x-ui
+# Server-Proxy
 
 xray panel with multi-protocol multi-user support
 
