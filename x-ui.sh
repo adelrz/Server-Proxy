@@ -18,7 +18,7 @@ function LOGI() {
     echo -e "${green}[INF] $* ${plain}"
 }
 # check root
-[[ $EUID -ne 0 ]] && LOGE "Error: You must be root to run this script!\n" && exit 1
+[[ $EUID -ne 0 ]] && LOGE "Error: This script must be run as root!\n" && exit 1
 
 # check os
 if [[ -f /etc/redhat-release ]]; then
@@ -36,7 +36,7 @@ elif cat /proc/version | grep -Eqi "ubuntu"; then
 elif cat /proc/version | grep -Eqi "centos|red hat|redhat"; then
     release="centos"
 else
-    LOGE "Error: System version not detected, please contact the script author！\n" && exit 1
+    LOGE "System version not detected, please contact the script author！\n" && exit 1
 fi
 
 os_version=""
@@ -65,7 +65,7 @@ fi
 
 confirm() {
     if [[ $# > 1 ]]; then
-        echo && read -p "$1 [default$2]: " temp
+        echo && read -p "$1 [default $2]: " temp
         if [[ x"${temp}" == x"" ]]; then
             temp=$2
         fi
@@ -94,7 +94,7 @@ before_show_menu() {
 }
 
 install() {
-    bash <(curl -Ls https://raw.githubusercontent.com/adelrz/Server-Proxy/master/install.sh)
+    bash <(curl -Ls https://raw.githubusercontent.com/FranzKafkaYu/x-ui/master/install.sh)
     if [[ $? == 0 ]]; then
         if [[ $# == 0 ]]; then
             start
@@ -113,7 +113,7 @@ update() {
         fi
         return 0
     fi
-    bash <(curl -Ls https://raw.githubusercontent.com/adelrz/Server-Proxy/master/install.sh)
+    bash <(curl -Ls https://raw.githubusercontent.com/FranzKafkaYu/x-ui/master/install.sh)
     if [[ $? == 0 ]]; then
         LOGI "The update is complete, the panel has been automatically restarted "
         exit 0
@@ -167,7 +167,7 @@ reset_config() {
         return 0
     fi
     /usr/local/x-ui/x-ui setting -reset
-    echo -e "All panel settings have been reset to default, please restart the panel now and use the default ${green}54321${plain} Port Access Panel"
+    echo -e "All panel settings have been reset to default, please restart the panel now and use the default ${green}54321${plain} 端口访问面板"
     confirm_restart
 }
 
@@ -181,7 +181,7 @@ check_config() {
 }
 
 set_port() {
-    echo && echo -n -e "Enter the port number[1-65535]: " && read port
+    echo && echo -n -e "Enter the port number [1-65535]: " && read port
     if [[ -z "${port}" ]]; then
         LOGD "Cancelled"
         before_show_menu
@@ -223,7 +223,7 @@ stop() {
         sleep 2
         check_status
         if [[ $? == 1 ]]; then
-            LOGI "x-ui and xray stop success"
+            LOGI "x-ui and xray stop successfully"
         else
             LOGE "The panel failed to stop, maybe because the stop time exceeded two seconds, please check the log information later"
         fi
@@ -271,7 +271,7 @@ enable() {
 disable() {
     systemctl disable x-ui
     if [[ $? == 0 ]]; then
-        LOGI "x-ui Cancel the boot and start successfully"
+        LOGI "x-ui Cancel the boot auto-start successfully"
     else
         LOGE "x-ui Failed to cancel the boot auto-start"
     fi
@@ -302,7 +302,7 @@ install_bbr() {
 }
 
 update_shell() {
-    wget -O /usr/bin/x-ui -N --no-check-certificate https://github.com/adelrz/Server-Proxy/raw/master/x-ui.sh
+    wget -O /usr/bin/x-ui -N --no-check-certificate https://github.com/FranzKafkaYu/x-ui/raw/master/x-ui.sh
     if [[ $? != 0 ]]; then
         echo ""
         LOGE "The download script failed, please check whether the machine can be connected Github"
@@ -371,11 +371,11 @@ show_status() {
         show_enable_status
         ;;
     1)
-        echo -e "Panel Status: ${yellow}not running${plain}"
+        echo -e "Panel Status: ${yellow}Not running${plain}"
         show_enable_status
         ;;
     2)
-        echo -e "Panel Status:${red}Not Installed${plain}"
+        echo -e "Panel Status: ${red}Not Installed${plain}"
         ;;
     esac
     show_xray_status
@@ -408,21 +408,142 @@ show_xray_status() {
     fi
 }
 
+#this will be an entrance for ssl cert issue
+#here we can provide two different methods to issue cert
+#first.standalone mode second.DNS API mode
 ssl_cert_issue() {
+    local method=""
     echo -E ""
     LOGD "******Instructions for use******"
-    LOGI "The script will use Acme Script application certificate,Guarantee when using:"
-    LOGI "1.know Cloudflare register e-mail"
-    LOGI "2.know Cloudflare Global API Key"
-    LOGI "3.domain name passed Cloudflare Parse to the current server"
-    LOGI "4.The default installation path for this script to apply for a certificate is /root/cert Table of contents"
+    LOGI "The script provides two ways to implement certificate issuance, and the certificate installation path is /root/cert"
+    LOGI "Mode 1: acme standalone mode, need to keep the port open"
+    LOGI "Method 2: acme DNS API mode, need to provide Cloudflare Global API Key"
+    LOGI "If the domain name is a free domain name, it is recommended to use method 1 to apply"
+    LOGI "If the domain name is not a free domain name and uses Cloudflare for resolution, use method 2 to apply"
+    read -p "Please select the method you want to use": method
+    LOGI "The way you use is ${method}"
+
+    if [ "${method}" == "1" ]; then
+        ssl_cert_issue_standalone
+    elif [ "${method}" == "2" ]; then
+        ssl_cert_issue_by_cloudflare
+    else
+        LOGE "Invalid input, please check your input, the script will exit..."
+        exit 1
+    fi
+}
+
+install_acme() {
+    cd ~
+    LOGI "Start installing the acme script..."
+    curl https://get.acme.sh | sh
+    if [ $? -ne 0 ]; then
+        LOGE "acme installation failed"
+        return 1
+    else
+        LOGI "acme Successful installation"
+    fi
+    return 0
+}
+
+#method for standalone mode
+ssl_cert_issue_standalone() {
+    #install acme first
+    install_acme
+    if [ $? -ne 0 ]; then
+        LOGE "Unable to install acme, please check the error log"
+        exit 1
+    fi
+    #install socat second
+    if [[ x"${release}" == x"centos" ]]; then
+        yum install socat -y
+    else
+        apt install socat -y
+    fi
+    if [ $? -ne 0 ]; then
+        LOGE "Unable to install socat, please check the error log"
+        exit 1
+    else
+        LOGI "socat installed successfully..."
+    fi
+    #creat a directory for install cert
+    certPath=/root/cert
+    if [ ! -d "$certPath" ]; then
+        mkdir $certPath
+    else
+        rm -rf $certPath
+        mkdir $certPath
+    fi
+    #get the domain here,and we need verify it
+    local domain=""
+    read -p "Please enter your domain name:" domain
+    LOGD "The domain name you entered is: ${domain},Domain validity verification in progress..."
+    #here we need to judge whether there exists cert already
+    local currentCert=$(~/.acme.sh/acme.sh --list | tail -1 | awk '{print $1}')
+    if [ ${currentCert} == ${domain} ]; then
+        local certInfo=$(~/.acme.sh/acme.sh --list)
+        LOGE "The domain name validity verification failed. The current environment already has a corresponding domain name certificate, and the application cannot be repeated. The current certificate details:"
+        LOGI "$certInfo"
+        exit 1
+    else
+        LOGI "Certificate validity check passed..."
+    fi
+    #get needed port here
+    local WebPort=80
+    read -p "Please enter the port you want to use, if you press Enter, the default port 80 will be used:" WebPort
+    if [[ ${WebPort} -gt 65535 || ${WebPort} -lt 1 ]]; then
+        LOGE "port of your choice ${WebPort} If it is an invalid value, the default port 80 will be used for application"
+    fi
+    LOGI "will use ${WebPort} For certificate request, please make sure the port is open..."
+    #NOTE:This should be handled by user
+    #open the port and kill the occupied progress
+    ~/.acme.sh/acme.sh --set-default-ca --server letsencrypt
+    ~/.acme.sh/acme.sh --issue -d ${domain} --standalone --httpport ${WebPort}
+    if [ $? -ne 0 ]; then
+        LOGE "The certificate application failed. Please refer to the error message for the reason."
+        exit 1
+    else
+        LOGI "The certificate application is successful, and the certificate installation starts..."
+    fi
+    #install cert
+    ~/.acme.sh/acme.sh --installcert -d ${domain} --ca-file /root/cert/ca.cer \
+        --cert-file /root/cert/${domain}.cer --key-file /root/cert/${domain}.key \
+        --fullchain-file /root/cert/fullchain.cer
+
+    if [ $? -ne 0 ]; then
+        LOGE "Certificate installation failed, script exited"
+        exit 1
+    else
+        LOGI "Certificate installed successfully, enable automatic update..."
+    fi
+    ~/.acme.sh/acme.sh --upgrade --auto-upgrade
+    if [ $? -ne 0 ]; then
+        LOGE "Automatic update settings failed, script exited"
+        ls -lah cert
+        chmod 755 $certPath
+        exit 1
+    else
+        LOGI "The certificate has been installed and automatic update has been turned on, the details are as follows"
+        ls -lah cert
+        chmod 755 $certPath
+    fi
+
+}
+
+#method for DNS API mode
+ssl_cert_issue_by_cloudflare() {
+    echo -E ""
+    LOGD "******Instructions for use******"
+    LOGI "This script will use the Acme script to apply for a certificate, and you need to ensure that:"
+    LOGI "1. Know the Cloudflare registered email address"
+    LOGI "2. Know the Cloudflare Global API Key"
+    LOGI "3. The domain name has been resolved to the current server through Cloudflare"
+    LOGI "4. The default installation path for the script to apply for a certificate is the /root/cert directory"
     confirm "I have confirmed the above [y/n]" "y"
     if [ $? -eq 0 ]; then
-        cd ~
-        LOGI "Install Acme screenplay"
-        curl https://get.acme.sh | sh
+        install_acme
         if [ $? -ne 0 ]; then
-            LOGE "Install acme script failed"
+            LOGE "Unable to install acme, please check the error log"
             exit 1
         fi
         CF_Domain=""
@@ -435,18 +556,28 @@ ssl_cert_issue() {
             rm -rf $certPath
             mkdir $certPath
         fi
-        LOGD "Please set a domain name:"
+        LOGD "Please set the domain name:"
         read -p "Input your domain here:" CF_Domain
-        LOGD "your domain is set to:${CF_Domain}"
-        LOGD "Please set an API key:"
+        LOGD "Your domain name is set to: ${CF_Domain}, is checking the validity of the domain name..."
+        #here we need to judge whether there exists cert already
+        local currentCert=$(~/.acme.sh/acme.sh --list | tail -1 | awk '{print $1}')
+        if [ ${currentCert} == ${CF_Domain} ]; then
+            local certInfo=$(~/.acme.sh/acme.sh --list)
+            LOGE "The domain name validity verification failed. The current environment already has a corresponding domain name certificate, and the application cannot be repeated. The current certificate details:"
+            LOGI "$certInfo"
+            exit 1
+        else
+            LOGI "Certificate validity check passed..."
+        fi
+        LOGD "Please set the API key:"
         read -p "Input your key here:" CF_GlobalKey
-        LOGD "yours API key is:${CF_GlobalKey}"
+        LOGD "Your API key is: ${CF_GlobalKey}"
         LOGD "Please set the registered email address:"
         read -p "Input your email here:" CF_AccountEmail
-        LOGD "Your registered email is:${CF_AccountEmail}"
+        LOGD "Your registered email address is: ${CF_AccountEmail}"
         ~/.acme.sh/acme.sh --set-default-ca --server letsencrypt
         if [ $? -ne 0 ]; then
-            LOGE "Modify the default CA to Lets'Encrypt on failure, the script exits"
+            LOGE "Modifying the default CA to Lets'Encrypt fails and the script exits"
             exit 1
         fi
         export CF_Key="${CF_GlobalKey}"
@@ -459,8 +590,8 @@ ssl_cert_issue() {
             LOGI "The certificate was issued successfully, the installation is in progress..."
         fi
         ~/.acme.sh/acme.sh --installcert -d ${CF_Domain} -d *.${CF_Domain} --ca-file /root/cert/ca.cer \
-        --cert-file /root/cert/${CF_Domain}.cer --key-file /root/cert/${CF_Domain}.key \
-        --fullchain-file /root/cert/fullchain.cer
+            --cert-file /root/cert/${CF_Domain}.cer --key-file /root/cert/${CF_Domain}.key \
+            --fullchain-file /root/cert/fullchain.cer
         if [ $? -ne 0 ]; then
             LOGE "Certificate installation failed, script exited"
             exit 1
@@ -486,7 +617,7 @@ ssl_cert_issue() {
 show_usage() {
     echo "x-ui How to use the management script: "
     echo "------------------------------------------"
-    echo "x-ui              - How to use the management script"
+    echo "x-ui              - Show management menu (more functions)"
     echo "x-ui start        - Start the x-ui panel"
     echo "x-ui stop         - stop x-ui panel"
     echo "x-ui restart      - restart x-ui panel"
@@ -503,17 +634,17 @@ show_usage() {
 
 show_menu() {
     echo -e "
-  ${green}x-ui Panel management script${plain}
+  ${green}x-ui panel management script${plain}
   ${green}0.${plain} exit script
 ————————————————
-  ${green}1.${plain} Install x-ui
-  ${green}2.${plain} renew x-ui
-  ${green}3.${plain} uninstall x-ui
+  ${green}1.${plain} install x-ui
+  ${green}2.${plain} update x-ui
+  ${green}3.${plain} wholesale x-ui
 ————————————————
   ${green}4.${plain} reset username password
   ${green}5.${plain} reset panel settings
   ${green}6.${plain} Set up panel ports
-  ${green}7.${plain} View current panel settings
+  ${green}7.${plain} View current panel information
 ————————————————
   ${green}8.${plain} start x-ui
   ${green}9.${plain} stop x-ui
