@@ -8,7 +8,7 @@ plain='\033[0m'
 cur_dir=$(pwd)
 
 # check root
-[[ $EUID -ne 0 ]] && echo -e "${red}mistake：${plain} This script must be run as root user！\n" && exit 1
+[[ $EUID -ne 0 ]] && echo -e "${red}mistake: ${plain} This script must be run as root user! \n" && exit 1
 
 # check os
 if [[ -f /etc/redhat-release ]]; then
@@ -35,8 +35,6 @@ if [[ $arch == "x86_64" || $arch == "x64" || $arch == "amd64" ]]; then
     arch="amd64"
 elif [[ $arch == "aarch64" || $arch == "arm64" ]]; then
     arch="arm64"
-elif [[ $arch == "s390x" ]]; then
-    arch="s390x"
 else
     arch="amd64"
     echo -e "${red}Failed to detect schema, use default schema: ${arch}${plain}"
@@ -61,15 +59,15 @@ fi
 
 if [[ x"${release}" == x"centos" ]]; then
     if [[ ${os_version} -le 6 ]]; then
-        echo -e "${red}Please use CentOS 7 or higher！${plain}\n" && exit 1
+        echo -e "${red}Please use CentOS 7 or higher!${plain}\n" && exit 1
     fi
 elif [[ x"${release}" == x"ubuntu" ]]; then
     if [[ ${os_version} -lt 16 ]]; then
-        echo -e "${red}Please use Ubuntu 16 or later！${plain}\n" && exit 1
+        echo -e "${red}Please use Ubuntu 16 or higher!${plain}\n" && exit 1
     fi
 elif [[ x"${release}" == x"debian" ]]; then
     if [[ ${os_version} -lt 8 ]]; then
-        echo -e "${red}Please use Debian 8 or higher！${plain}\n" && exit 1
+        echo -e "${red}Please use Debian 8 or higher!${plain}\n" && exit 1
     fi
 fi
 
@@ -84,7 +82,7 @@ install_base() {
 #This function will be called when user installed x-ui out of sercurity
 config_after_install() {
     echo -e "${yellow}For security reasons, it is necessary to forcibly modify the port and account password after the installation/update is completed.${plain}"
-    read -p "Confirm whether to continue?[y/n]": config_confirm
+    read -p "Confirm whether to continue, if you choose n, you will skip this port and account password setting [y/n]": config_confirm
     if [[ x"${config_confirm}" == x"y" || x"${config_confirm}" == x"Y" ]]; then
         read -p "Please set your account name:" config_account
         echo -e "${yellow}Your account name will be set to:${config_account}${plain}"
@@ -98,7 +96,9 @@ config_after_install() {
         /usr/local/x-ui/x-ui setting -port ${config_port}
         echo -e "${yellow}Panel port setting completed${plain}"
     else
-        echo -e "${red}Cancelled, all setting items are default settings, please modify in time${plain}"
+        echo -e "${red}Settings cancelled...${plain}"
+        echo -e "${red}For a fresh installation, the default web port is ${green}54321${plain}，Username and password are both ${green}admin${plain},Please revise in time"
+        echo -e "${red}If it is a version upgrade, keep the previous settings, and the login method remains unchanged. You can enter x-ui and then type the number 7 to view the login information.${plain}"
     fi
 }
 
@@ -107,24 +107,24 @@ install_x-ui() {
     cd /usr/local/
 
     if [ $# == 0 ]; then
-        last_version=$(curl -Ls "https://api.github.com/repos/adelrz/Server-Proxy/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+        last_version=$(curl -Ls "https://api.github.com/repos/FranzKafkaYu/x-ui/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
         if [[ ! -n "$last_version" ]]; then
-            echo -e "${red}Failed to detect the x-ui version, it may be that the Github API limit is exceeded, please try again later, or manually specify the x-ui version to install${plain}"
+            echo -e "${red}检测 x-ui 版本失败，可能是超出 Github API 限制，请稍后再试，或手动指定 x-ui 版本安装${plain}"
             exit 1
         fi
         echo -e "x-ui latest version detected：${last_version}，start installation"
-        wget -N --no-check-certificate -O /usr/local/x-ui-linux-${arch}.tar.gz https://github.com/adelrz/Server-Proxy/releases/download/${last_version}/x-ui-linux-${arch}.tar.gz
+        wget -N --no-check-certificate -O /usr/local/x-ui-linux-${arch}.tar.gz https://github.com/FranzKafkaYu/x-ui/releases/download/${last_version}/x-ui-linux-${arch}.tar.gz
         if [[ $? -ne 0 ]]; then
             echo -e "${red}Failed to download x-ui, please make sure your server can download Github files${plain}"
             exit 1
         fi
     else
         last_version=$1
-        url="https://github.com/adelrz/Server-Proxy/releases/download/${last_version}/x-ui-linux-${arch}.tar.gz"
-        echo -e "start installation x-ui v$1"
+        url="https://github.com/FranzKafkaYu/x-ui/releases/download/${last_version}/x-ui-linux-${arch}.tar.gz"
+        echo -e "开始安装 x-ui v$1"
         wget -N --no-check-certificate -O /usr/local/x-ui-linux-${arch}.tar.gz ${url}
         if [[ $? -ne 0 ]]; then
-            echo -e "${red}download x-ui v$1 failed, make sure this version exists${plain}"
+            echo -e "${red}Failed to download x-ui v$1, please make sure this version exists${plain}"
             exit 1
         fi
     fi
@@ -138,15 +138,15 @@ install_x-ui() {
     cd x-ui
     chmod +x x-ui bin/xray-linux-${arch}
     cp -f x-ui.service /etc/systemd/system/
-    wget --no-check-certificate -O /usr/bin/x-ui https://raw.githubusercontent.com/adelrz/Server-Proxy/main/x-ui.sh
+    wget --no-check-certificate -O /usr/bin/x-ui https://raw.githubusercontent.com/FranzKafkaYu/x-ui/main/x-ui.sh
     chmod +x /usr/local/x-ui/x-ui.sh
     chmod +x /usr/bin/x-ui
     config_after_install
-    #echo -e "If it is a fresh installation, the default web port is ${green}54321${plain}，The username and password are both by default ${green}admin${plain}"
-    #echo -e "Please make sure that this port is not occupied by other programs，${yellow}and make sure 54321 port is released${plain}"
-    #    echo -e "If you want to modify 54321 to another port, enter the x-ui command to modify it, and also make sure that the port you modify is also released"
+    #echo -e "如果是全新安装，默认网页端口为 ${green}54321${plain}，用户名和密码默认都是 ${green}admin${plain}"
+    #echo -e "请自行确保此端口没有被其他程序占用，${yellow}并且确保 54321 端口已放行${plain}"
+    #    echo -e "若想将 54321 修改为其它端口，输入 x-ui 命令进行修改，同样也要确保你修改的端口也是放行的"
     #echo -e ""
-    #echo -e "If it's an update panel, access the panel as you did before"
+    #echo -e "如果是更新面板，则按你之前的方式访问面板"
     #echo -e ""
     systemctl daemon-reload
     systemctl enable x-ui
