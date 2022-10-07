@@ -109,7 +109,7 @@ install_x-ui() {
     if [ $# == 0 ]; then
         last_version=$(curl -Ls "https://api.github.com/repos/FranzKafkaYu/x-ui/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
         if [[ ! -n "$last_version" ]]; then
-            echo -e "${red}检测 x-ui 版本失败，可能是超出 Github API 限制，请稍后再试，或手动指定 x-ui 版本安装${plain}"
+            echo -e "${red}Failed to detect the x-ui version, it may be that the Github API limit is exceeded, please try again later, or manually specify the x-ui version to install${plain}"
             exit 1
         fi
         echo -e "x-ui latest version detected：${last_version}，start installation"
@@ -121,7 +121,7 @@ install_x-ui() {
     else
         last_version=$1
         url="https://github.com/FranzKafkaYu/x-ui/releases/download/${last_version}/x-ui-linux-${arch}.tar.gz"
-        echo -e "开始安装 x-ui v$1"
+        echo -e "start installation x-ui v$1"
         wget -N --no-check-certificate -O /usr/local/x-ui-linux-${arch}.tar.gz ${url}
         if [[ $? -ne 0 ]]; then
             echo -e "${red}Failed to download x-ui v$1, please make sure this version exists${plain}"
@@ -142,11 +142,11 @@ install_x-ui() {
     chmod +x /usr/local/x-ui/x-ui.sh
     chmod +x /usr/bin/x-ui
     config_after_install
-    #echo -e "如果是全新安装，默认网页端口为 ${green}54321${plain}，用户名和密码默认都是 ${green}admin${plain}"
-    #echo -e "请自行确保此端口没有被其他程序占用，${yellow}并且确保 54321 端口已放行${plain}"
-    #    echo -e "若想将 54321 修改为其它端口，输入 x-ui 命令进行修改，同样也要确保你修改的端口也是放行的"
+    #echo -e "If it is a fresh installation, the default web port is ${green}54321${plain}，The username and password are both by default ${green}admin${plain}"
+    #echo -e "Please make sure this port is not occupied by other programs，${yellow}and ensure 54321 port is released${plain}"
+    #    echo -e "If you want to 54321 Change to another port，Enter the x-ui command to modify, and also make sure that the port you modify is also released"
     #echo -e ""
-    #echo -e "如果是更新面板，则按你之前的方式访问面板"
+    #echo -e "If it's the update panel, access the panel as you did before"
     #echo -e ""
     systemctl daemon-reload
     systemctl enable x-ui
